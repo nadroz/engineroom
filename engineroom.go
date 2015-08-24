@@ -118,9 +118,8 @@ func scan(queuePrefix string){
 	}
 
 	var queueNames []string
-	for i := (len(queueList.Queues) -1); i > 0; i-- {
+	for i := range queueList.Queues {
 		queueNames = append(queueNames, queueList.Queues[i])
-		//count(queueList.Queues[i])
 	}
 	count(queueNames, false)
 }
