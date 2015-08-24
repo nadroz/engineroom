@@ -5,6 +5,9 @@ import (
     "github.com/docopt/docopt-go"
 	"github.com/nadroz/azure-sdk-for-go/storage"
 	"os"
+	"time"
+	"coordinator"
+	"strconv"
 )
 
 func main(){
@@ -12,7 +15,9 @@ usage := `engineroom - an azure message queue client
 Usage:
   engineroom count [<queueName>]
   engineroom scan [ -a ] [<queuePrefix>]
-  
+  engineroom tp [<queueName>]
+  engineroom profile [<queueName>] [<duration>]
+
   engineroom -h | --help
   engineroom --version
 Arguments:
@@ -31,7 +36,7 @@ The most commonly used commands are:
    rm           Deletes a blob
 `
 
-	dict := parse(usage, "EngineRoom 0.0")
+	dict := parse(usage, "EngineRoom 0.1")
 	doIt(dict)
 }
 
@@ -41,7 +46,9 @@ func doIt(dict map[string]interface{}){
 			if queueName == ""{
 				os.Exit(1)
 			}
-			count(queueName)
+			var queueNames []string
+			queueNames = append(queueNames, queueName)
+			count(queueNames, false)
 		}
 
 	if dict["scan"].(bool){
@@ -50,6 +57,17 @@ func doIt(dict map[string]interface{}){
 			queuePrefix = dict["<queuePrefix>"].(string)
 		}
 		scan(queuePrefix)
+	}
+
+	if dict["tp"].(bool){
+		queueName := dict["<queueName>"].(string)
+		measureThroughput(queueName)
+	}
+
+	if dict["profile"].(bool) {
+		queueName := dict["<queueName>"].(string)
+		dur, _ := strconv.ParseInt(dict["<duration>"].(string), 10, 64)
+		profile(queueName, int(dur))
 	}
 }
 
@@ -63,45 +81,179 @@ func parse(usage, version string) map[string]interface{} {
 	return dict
 }
 
-func count(queueName string){
-	queue := getStorageClient()
 
-	messages, err := queue.GetMessages(queueName, storage.GetMessagesParameters{10, 5})
+func count(queueNames []string, silent bool) []coordinator.Queue {
+	client := getStorageClient()
+	
+	var queues []coordinator.Queue
+
+	for i := range queueNames {
+	queueName := queueNames[i]
+	depth, err := client.GetQueueDepth(queueName)
 	if err != nil{
 			os.Exit(1)
 		}
-	fmt.Printf("%s: %d\n", queueName, len(messages.QueueMessagesList))
+	var queue coordinator.Queue
+	queue.Name = queueName
+	queue.Depth = int(depth)
+	queues = append(queues, queue)
+	}
+	if silent != true {
+		coordinator.ReportDepth(queues)
+	}
+	return queues
 }
 
 func scan(queuePrefix string){
-	queue := getStorageClient()
+	client := getStorageClient()
 	
 	var matchPrefix bool
 	if queuePrefix != ""{
 		matchPrefix = true
 	}
 	
-	queueList, err := queue.ListQueues(storage.ListQueuesParameters{matchPrefix, queuePrefix})
+	queueList, err := client.ListQueues(storage.ListQueuesParameters{matchPrefix, queuePrefix})
 	if err != nil{
-		fmt.Println("ListQueues bombed!")
 		os.Exit(1)
 	}
 
-	fmt.Println("Prefix: " + queueList.Prefix)
+	var queueNames []string
 	for i := (len(queueList.Queues) -1); i > 0; i-- {
-		count(queueList.Queues[i])	
+		queueNames = append(queueNames, queueList.Queues[i])
+		//count(queueList.Queues[i])
 	}
+	count(queueNames, false)
+}
+
+func measureThroughput(queueName string) time.Duration {
+	nameChan := make(chan string)
+	c := peekMessages(nameChan)
+
+	nameChan <- queueName
+	close(nameChan)
+	message := <- c
+	now := time.Now().UTC()
+	ins, err := time.Parse(time.RFC1123, message.InsertionTime)
+	if err != nil{
+		os.Exit(1)
+	}
+
+	ins = ins.UTC()
+	dif := now.Sub(ins)
+	fmt.Println(dif)
+	return dif
+}
+
+func peekMessages(queueNames chan string) <- chan storage.PeekMessageResponse {
+	client := getStorageClient()
+	out := make(chan storage.PeekMessageResponse)
+	go func(){
+			for name := range queueNames {
+				messages, err := client.PeekMessages(name, storage.PeekMessagesParameters{1})
+				if err != nil {
+					out <- storage.PeekMessageResponse{}
+				}
+				
+				for i := range messages.QueueMessagesList {
+					out <- messages.QueueMessagesList[i]
+				}
+			}
+			close(out)
+		}()
+		return out
+}
+
+	//this needs to maintain a buffer of durations... on which to operate
+	// then send a calcualted average down a channel to the coordinator/reader
+	//wait 2 sec to peek again
+	//only recalculate when a dequeue/enqueue occurs
+func profile(queueName string, seconds int) {
+	//loop for a time duration... peek the queue
+	stopWatch := time.NewTimer(time.Duration(seconds) * time.Second).C
+	nameChan := make(chan string)
+	resChan := make(chan coordinator.Queue)
+	messageChan := peekMessages(nameChan)
+	go coordinator.ReportMovingAverage(resChan)
+
+	//do timer
+	go func(){
+		for{
+			select {
+				case <- stopWatch:
+					close(nameChan)
+					return
+				default:
+					nameChan <- queueName
+			}
+		}
+	}()
+	var coll []MessageDuration
+	var dur time.Duration
+	for message := range messageChan{
+		size := len(coll)
+		now := time.Now().UTC()
+	    switch {
+		    	case size == 0:
+		    		ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
+		    		ins = ins.UTC()
+		    		dur = now.Sub(ins)
+		    		coll = append(coll, MessageDuration{message.MessageID, dur})
+		    	case size < 10:
+		    		if coll[len(coll)-1].MessageId != message.MessageID {
+		    			ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
+		    			ins = ins.UTC()
+		    			dur = now.Sub(ins)
+						coll = append(coll, MessageDuration{message.MessageID, dur})
+		    		}
+
+		    	case size == 10:
+		    		avg := doAverage(coll)
+		    		queueColl := []string{queueName}
+		    		currentQ := count(queueColl, true)
+		    		resChan <- coordinator.Queue{queueName, currentQ[0].Depth, avg}
+		    		coll = coll[1:]
+    	}
+	}
+	close(resChan)
+}
+
+func doAverage (durations []MessageDuration) time.Duration {
+	var dur time.Duration = 0
+	for i := range durations {
+		dur += durations[i].ThroughputDuration
+	}
+	return dur/(time.Duration(len(durations)))
+}
+
+
+
+func getDuration(start string) time.Duration {
+	now := time.Now().UTC()
+	ins, err := time.Parse(time.RFC1123, start)
+	if err != nil{
+		os.Exit(1)
+	}
+	ins = ins.UTC()
+	dif := now.Sub(ins)
+	fmt.Println("get duration:")
+	fmt.Println(dif)
+	return dif
 }
 
 func getStorageClient() storage.QueueServiceClient {
 	//should these be more configurable?
-	const account = "yourAccount"
-	const key = "yourKey"
+	const account = "YourAccount"
+	const key = "YourKey"
 
 	repo, err:= storage.NewBasicClient(account, key)
 	if err != nil{
 			os.Exit(1)
 		}
-	queue := repo.GetQueueService()
-	return queue
+	client := repo.GetQueueService()
+	return client
+}
+
+type MessageDuration struct {
+	MessageId string
+	ThroughputDuration time.Duration
 }
