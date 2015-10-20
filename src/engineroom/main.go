@@ -1,17 +1,17 @@
 package main
 
 import (
-    "fmt"
-    "github.com/docopt/docopt-go"
+	"coordinator"
+	"fmt"
+	"github.com/docopt/docopt-go"
 	"github.com/nadroz/azure-sdk-for-go/storage"
 	"os"
-	"time"
-	"coordinator"
 	"strconv"
+	"time"
 )
 
-func main(){
-usage := `engineroom - an azure message queue client
+func main() {
+	usage := `engineroom - an azure message queue client
 Usage:
   engineroom count [<queueName>]
   engineroom scan [ -a ] [<queuePrefix>]
@@ -40,26 +40,26 @@ The most commonly used commands are:
 	doIt(dict)
 }
 
-func doIt(dict map[string]interface{}){
-	if dict["count"].(bool){
-			queueName := dict["<queueName>"].(string)
-			if queueName == ""{
-				os.Exit(1)
-			}
-			var queueNames []string
-			queueNames = append(queueNames, queueName)
-			count(queueNames, false)
+func doIt(dict map[string]interface{}) {
+	if dict["count"].(bool) {
+		queueName := dict["<queueName>"].(string)
+		if queueName == "" {
+			os.Exit(1)
 		}
+		var queueNames []string
+		queueNames = append(queueNames, queueName)
+		count(queueNames, false)
+	}
 
-	if dict["scan"].(bool){
+	if dict["scan"].(bool) {
 		queuePrefix := ""
-		if !dict["-a"].(bool){
+		if !dict["-a"].(bool) {
 			queuePrefix = dict["<queuePrefix>"].(string)
 		}
 		scan(queuePrefix)
 	}
 
-	if dict["tp"].(bool){
+	if dict["tp"].(bool) {
 		queueName := dict["<queueName>"].(string)
 		measureThroughput(queueName)
 	}
@@ -74,29 +74,28 @@ func doIt(dict map[string]interface{}){
 //To do: get a better handle on what docopt.Parse arguments do.
 func parse(usage, version string) map[string]interface{} {
 	dict, err := docopt.Parse(usage, nil, true, version, false)
-	
-	if err != nil{
+
+	if err != nil {
 		os.Exit(1)
 	}
 	return dict
 }
 
-
 func count(queueNames []string, silent bool) []coordinator.Queue {
 	client := getStorageClient()
-	
+
 	var queues []coordinator.Queue
 
 	for i := range queueNames {
-	queueName := queueNames[i]
-	depth, err := client.GetQueueDepth(queueName)
-	if err != nil{
+		queueName := queueNames[i]
+		depth, err := client.GetQueueDepth(queueName)
+		if err != nil {
 			os.Exit(1)
 		}
-	var queue coordinator.Queue
-	queue.Name = queueName
-	queue.Depth = int(depth)
-	queues = append(queues, queue)
+		var queue coordinator.Queue
+		queue.Name = queueName
+		queue.Depth = int(depth)
+		queues = append(queues, queue)
 	}
 	if silent != true {
 		coordinator.ReportDepth(queues)
@@ -104,16 +103,16 @@ func count(queueNames []string, silent bool) []coordinator.Queue {
 	return queues
 }
 
-func scan(queuePrefix string){
+func scan(queuePrefix string) {
 	client := getStorageClient()
-	
+
 	var matchPrefix bool
-	if queuePrefix != ""{
+	if queuePrefix != "" {
 		matchPrefix = true
 	}
-	
+
 	queueList, err := client.ListQueues(storage.ListQueuesParameters{matchPrefix, queuePrefix})
-	if err != nil{
+	if err != nil {
 		os.Exit(1)
 	}
 
@@ -130,10 +129,10 @@ func measureThroughput(queueName string) time.Duration {
 
 	nameChan <- queueName
 	close(nameChan)
-	message := <- c
+	message := <-c
 	now := time.Now().UTC()
 	ins, err := time.Parse(time.RFC1123, message.InsertionTime)
-	if err != nil{
+	if err != nil {
 		os.Exit(1)
 	}
 
@@ -143,29 +142,29 @@ func measureThroughput(queueName string) time.Duration {
 	return dif
 }
 
-func peekMessages(queueNames chan string) <- chan storage.PeekMessageResponse {
+func peekMessages(queueNames chan string) <-chan storage.PeekMessageResponse {
 	client := getStorageClient()
 	out := make(chan storage.PeekMessageResponse)
-	go func(){
-			for name := range queueNames {
-				messages, err := client.PeekMessages(name, storage.PeekMessagesParameters{1})
-				if err != nil {
-					out <- storage.PeekMessageResponse{}
-				}
-				
-				for i := range messages.QueueMessagesList {
-					out <- messages.QueueMessagesList[i]
-				}
+	go func() {
+		for name := range queueNames {
+			messages, err := client.PeekMessages(name, storage.PeekMessagesParameters{1})
+			if err != nil {
+				out <- storage.PeekMessageResponse{}
 			}
-			close(out)
-		}()
-		return out
+
+			for i := range messages.QueueMessagesList {
+				out <- messages.QueueMessagesList[i]
+			}
+		}
+		close(out)
+	}()
+	return out
 }
 
-	//this needs to maintain a buffer of durations... on which to operate
-	// then send a calcualted average down a channel to the coordinator/reader
-	//wait 2 sec to peek again
-	//only recalculate when a dequeue/enqueue occurs
+//this needs to maintain a buffer of durations... on which to operate
+// then send a calcualted average down a channel to the coordinator/reader
+//wait 2 sec to peek again
+//only recalculate when a dequeue/enqueue occurs
 func profile(queueName string, seconds int) {
 	//loop for a time duration... peek the queue
 	stopWatch := time.NewTimer(time.Duration(seconds) * time.Second).C
@@ -175,61 +174,59 @@ func profile(queueName string, seconds int) {
 	go coordinator.ReportMovingAverage(resChan)
 
 	//do timer
-	go func(){
-		for{
+	go func() {
+		for {
 			select {
-				case <- stopWatch:
-					close(nameChan)
-					return
-				default:
-					nameChan <- queueName
+			case <-stopWatch:
+				close(nameChan)
+				return
+			default:
+				nameChan <- queueName
 			}
 		}
 	}()
 	var coll []MessageDuration
 	var dur time.Duration
-	for message := range messageChan{
+	for message := range messageChan {
 		size := len(coll)
 		now := time.Now().UTC()
-	    switch {
-		    	case size == 0:
-		    		ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
-		    		ins = ins.UTC()
-		    		dur = now.Sub(ins)
-		    		coll = append(coll, MessageDuration{message.MessageID, dur})
-		    	case size < 10:
-		    		if coll[len(coll)-1].MessageId != message.MessageID {
-		    			ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
-		    			ins = ins.UTC()
-		    			dur = now.Sub(ins)
-						coll = append(coll, MessageDuration{message.MessageID, dur})
-		    		}
+		switch {
+		case size == 0:
+			ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
+			ins = ins.UTC()
+			dur = now.Sub(ins)
+			coll = append(coll, MessageDuration{message.MessageID, dur})
+		case size < 10:
+			if coll[len(coll)-1].MessageId != message.MessageID {
+				ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
+				ins = ins.UTC()
+				dur = now.Sub(ins)
+				coll = append(coll, MessageDuration{message.MessageID, dur})
+			}
 
-		    	case size == 10:
-		    		avg := doAverage(coll)
-		    		queueColl := []string{queueName}
-		    		currentQ := count(queueColl, true)
-		    		resChan <- coordinator.Queue{queueName, currentQ[0].Depth, avg}
-		    		coll = coll[1:]
-    	}
+		case size == 10:
+			avg := doAverage(coll)
+			queueColl := []string{queueName}
+			currentQ := count(queueColl, true)
+			resChan <- coordinator.Queue{queueName, currentQ[0].Depth, avg}
+			coll = coll[1:]
+		}
 	}
 	close(resChan)
 }
 
-func doAverage (durations []MessageDuration) time.Duration {
+func doAverage(durations []MessageDuration) time.Duration {
 	var dur time.Duration = 0
 	for i := range durations {
 		dur += durations[i].ThroughputDuration
 	}
-	return dur/(time.Duration(len(durations)))
+	return dur / (time.Duration(len(durations)))
 }
-
-
 
 func getDuration(start string) time.Duration {
 	now := time.Now().UTC()
 	ins, err := time.Parse(time.RFC1123, start)
-	if err != nil{
+	if err != nil {
 		os.Exit(1)
 	}
 	ins = ins.UTC()
@@ -244,15 +241,15 @@ func getStorageClient() storage.QueueServiceClient {
 	const account = "YourAccount"
 	const key = "YourKey"
 
-	repo, err:= storage.NewBasicClient(account, key)
-	if err != nil{
-			os.Exit(1)
-		}
+	repo, err := storage.NewBasicClient(account, key)
+	if err != nil {
+		os.Exit(1)
+	}
 	client := repo.GetQueueService()
 	return client
 }
 
 type MessageDuration struct {
-	MessageId string
+	MessageId          string
 	ThroughputDuration time.Duration
 }

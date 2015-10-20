@@ -1,0 +1,57 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/Azure/azure-sdk-for-go/Godeps/_workspace/src/golang.org/x/crypto/pkcs12",
+			"repository": "https://github.com/Azure/azure-sdk-for-go",
+			"revision": "3dcabb61c225af4013db7af20d4fe430fd09e311",
+			"branch": "master",
+			"path": "/Godeps/_workspace/src/golang.org/x/crypto/pkcs12"
+		},
+		{
+			"importpath": "github.com/Azure/azure-sdk-for-go/core/http",
+			"repository": "https://github.com/Azure/azure-sdk-for-go",
+			"revision": "3dcabb61c225af4013db7af20d4fe430fd09e311",
+			"branch": "master",
+			"path": "/core/http"
+		},
+		{
+			"importpath": "github.com/Azure/azure-sdk-for-go/core/tls",
+			"repository": "https://github.com/Azure/azure-sdk-for-go",
+			"revision": "3dcabb61c225af4013db7af20d4fe430fd09e311",
+			"branch": "master",
+			"path": "/core/tls"
+		},
+		{
+			"importpath": "github.com/Azure/azure-sdk-for-go/management",
+			"repository": "https://github.com/Azure/azure-sdk-for-go",
+			"revision": "3dcabb61c225af4013db7af20d4fe430fd09e311",
+			"branch": "master",
+			"path": "/management"
+		},
+		{
+			"importpath": "github.com/Azure/go-pkcs12",
+			"repository": "https://github.com/Azure/go-pkcs12",
+			"revision": "40102598fec19246e36fb595018ce387dbd7b3cc",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/docopt/docopt-go",
+			"repository": "https://github.com/docopt/docopt-go",
+			"revision": "854c423c810880e30b9fecdabb12d54f4a92f9bb",
+			"branch": "HEAD"
+		},
+		{
+			"importpath": "github.com/nadroz/azure-sdk-for-go",
+			"repository": "https://github.com/nadroz/azure-sdk-for-go",
+			"revision": "6c97130d7c08c54c5c7534364030f085726babef",
+			"branch": "HEAD"
+		},
+		{
+			"importpath": "github.com/olekukonko/tablewriter",
+			"repository": "https://github.com/olekukonko/tablewriter",
+			"revision": "b9346ac189c55dd419f85c7ad2cd56f810bf19d6",
+			"branch": "HEAD"
+		}
+	]
+}
