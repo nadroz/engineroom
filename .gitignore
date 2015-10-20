@@ -1,3 +1,6 @@
 vendor/src
 bin
 pkg
+
+# IDK where this comes from
+src/uri.txt

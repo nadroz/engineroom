@@ -1,6 +1,7 @@
 package main
 
 import (
+	"config"
 	"coordinator"
 	"fmt"
 	"github.com/docopt/docopt-go"
@@ -10,28 +11,33 @@ import (
 	"time"
 )
 
-var usage string = `engineroom - an azure message queue client
+const (
+	usage string = `engineroom - an azure message queue client
 Usage:
-	engineroom count [<queueName>]
-	engineroom scan [ -a ] [<queuePrefix>]
-	engineroom tp [<queueName>]
-	engineroom profile [<queueName>] [<duration>]
+	engineroom count [ -F configFile ] [ -e environment ] <queueName>
+	engineroom scan [ -F configFile ] [ -e environment ] ( -a | <queuePrefix> )
+	engineroom tp [ -F configFile ] [ -e environment ] <queueName>
+	engineroom profile [ -F configFile ] [ -e environment ] <queueName> [<duration>]
 Arguments:
-	queueName     The name(s) of one or more queues
-	queuePrefix   A prefix for filtering which queues to show
-	duration      A length of time, in seconds
+	queueName    The name(s) of one or more queues
+	queuePrefix  A prefix for filtering which queues to show
+	duration     A length of time, in seconds [default: 10]
 Options:
-	-a            all queues
-	-h, --help    Show this screen.
-	--version     Show version.
+	-a           All queues
+	-e=env       Azure Storage Services account [default: default]
+ 	-F=file      Alternate configuration file [default: /usr/local/etc/engineroom/config]
+	-h, --help   Show this screen.
+	--version    Show version.
 The most commonly used commands are:
 	count        Prints the number of messages in one or more queues
 	scan         Lists the queues in a storage container
 	tp           How long for one message to traverse the queue
 	profile      Moving average of queue depth and throughput over time
 `
+	version string = "EngineRoom 0.2"
+)
 
-var version string = "EngineRoom 0.2"
+var conf *config.AzureConfig
 
 func main() {
 	dict := parse(usage, version)
@@ -39,7 +45,20 @@ func main() {
 }
 
 func doIt(dict map[string]interface{}) {
+
 	fmt.Printf("%v\n", dict)
+
+	// load config
+	configFile := dict["-F"].(string)
+	environment := dict["-e"].(string)
+
+	var err error // Cannot use :=, or we will create a new conf scoped locally
+	conf, err = config.LoadAzureConfig(configFile, environment)
+	if err != nil {
+		fmt.Printf("Failed to load config: %s\n", err)
+		return
+	}
+
 	if dict["count"].(bool) {
 		if dict["<queueName>"] == nil {
 			fmt.Println(usage)
@@ -256,11 +275,7 @@ func getDuration(start string) time.Duration {
 }
 
 func getStorageClient() storage.QueueServiceClient {
-	//should these be more configurable?
-	const account = "YourAccount"
-	const key = "YourKey"
-
-	repo, err := storage.NewBasicClient(account, key)
+	repo, err := storage.NewBasicClient(conf.Name, conf.AccessKey)
 	if err != nil {
 		os.Exit(1)
 	}
