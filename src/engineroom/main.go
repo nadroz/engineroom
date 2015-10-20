@@ -10,37 +10,42 @@ import (
 	"time"
 )
 
-func main() {
-	usage := `engineroom - an azure message queue client
+var usage string = `engineroom - an azure message queue client
 Usage:
-  engineroom count [<queueName>]
-  engineroom scan [ -a ] [<queuePrefix>]
-  engineroom tp [<queueName>]
-  engineroom profile [<queueName>] [<duration>]
-
-  engineroom -h | --help
-  engineroom --version
+	engineroom count [<queueName>]
+	engineroom scan [ -a ] [<queuePrefix>]
+	engineroom tp [<queueName>]
+	engineroom profile [<queueName>] [<duration>]
 Arguments:
-  queueName     	The name(s) of one or more queues
-  queuePrefix		A prefix for filtering which queues to show
-  duration			A length of time, in seconds
+	queueName     The name(s) of one or more queues
+	queuePrefix   A prefix for filtering which queues to show
+	duration      A length of time, in seconds
 Options:
-  -a                all queues
-  -h, --help     	Show this screen.
-  --version     	Show version.
+	-a            all queues
+	-h, --help    Show this screen.
+	--version     Show version.
 The most commonly used commands are:
-   count        Prints the number of messages in one or more queues
-   scan			Lists the queues in a storage container
-   tp			Measures the amount of time it takes a single message to clear the queue
-   profile      Prints a moving average of queue depth and throughput over time
+	count        Prints the number of messages in one or more queues
+	scan         Lists the queues in a storage container
+	tp           How long for one message to traverse the queue
+	profile      Moving average of queue depth and throughput over time
 `
 
-	dict := parse(usage, "EngineRoom 0.2")
+var version string = "EngineRoom 0.2"
+
+func main() {
+	dict := parse(usage, version)
 	doIt(dict)
 }
 
 func doIt(dict map[string]interface{}) {
+	fmt.Printf("%v\n", dict)
 	if dict["count"].(bool) {
+		if dict["<queueName>"] == nil {
+			fmt.Println(usage)
+			return
+		}
+
 		queueName := dict["<queueName>"].(string)
 		if queueName == "" {
 			os.Exit(1)
@@ -53,17 +58,32 @@ func doIt(dict map[string]interface{}) {
 	if dict["scan"].(bool) {
 		queuePrefix := ""
 		if !dict["-a"].(bool) {
+			if dict["<queuePrefix>"] == nil {
+				fmt.Println(usage)
+				return
+			}
+
 			queuePrefix = dict["<queuePrefix>"].(string)
 		}
 		scan(queuePrefix)
 	}
 
 	if dict["tp"].(bool) {
+		if dict["<queueName>"] == nil {
+			fmt.Println(usage)
+			return
+		}
+
 		queueName := dict["<queueName>"].(string)
 		measureThroughput(queueName)
 	}
 
 	if dict["profile"].(bool) {
+		if dict["<queueName>"] == nil {
+			fmt.Println(usage)
+			return
+		}
+
 		queueName := dict["<queueName>"].(string)
 		dur, _ := strconv.ParseInt(dict["<duration>"].(string), 10, 64)
 		profile(queueName, int(dur))
