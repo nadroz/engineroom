@@ -21,22 +21,21 @@ Usage:
   engineroom -h | --help
   engineroom --version
 Arguments:
-  container     	The name of the container to query
-  blobspec      	A reference to one or more blobs (e.g. "mycontainer/foo", "mycontainer/")
-  blobpath			The path of a blob (e.g. "mycontainer/foo.txt")
+  queueName     	The name(s) of one or more queues
+  queuePrefix		A prefix for filtering which queues to show
+  duration			A length of time, in seconds
 Options:
   -a                all queues
   -h, --help     	Show this screen.
   --version     	Show version.
 The most commonly used commands are:
-   ls         	Lists containers and blobs
-   get          Downloads a blob
-   put          Uploads a blob
-   tree         Prints the contents of a container as a tree
-   rm           Deletes a blob
+   count        Prints the number of messages in one or more queues
+   scan			Lists the queues in a storage container
+   tp			Measures the amount of time it takes a single message to clear the queue
+   profile      Prints a moving average of queue depth and throughput over time
 `
 
-	dict := parse(usage, "EngineRoom 0.1")
+	dict := parse(usage, "EngineRoom 0.2")
 	doIt(dict)
 }
 
