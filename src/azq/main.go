@@ -16,6 +16,8 @@ Usage:
 	azq tp [ -F configFile ] [ -e environment ] <queueName>
 	azq profile [ -F configFile ] [ -e environment ] <queueName> [<duration>]
 	azq put [ -F configFile ] [ -e environment ] <queueName> <message>
+	azq peek [ -F configFile ] [ -e environment ] <queueName>
+	azq pop [ -F configFile ] [ -e environment ] <queueName>
 Arguments:
 	queueName    The name(s) of one or more queues
 	queuePrefix  A prefix for filtering which queues to show
@@ -86,6 +88,16 @@ func doIt(dict map[string]interface{}) {
 		queueName := dict["<queueName>"].(string)
 		message := dict["<message>"].(string)
 		engineroom.Put(queueName, message)
+	}
+
+	if dict["pop"].(bool) {
+		queueName := dict["<queueName>"].(string)
+		engineroom.Pop(queueName)
+	}
+
+	if dict["peek"].(bool) {
+		queueName := dict["<queueName>"].(string)
+		engineroom.Peek(queueName)
 	}
 }
 

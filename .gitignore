@@ -3,4 +3,8 @@ bin
 pkg
 
 # IDK where this comes from
-src/uri.txt
+uri.txt
+
+# VIM
+*~
+*.swp
