@@ -1,3 +1,10 @@
 vendor/src
 bin
 pkg
+
+# IDK where this comes from
+uri.txt
+
+# VIM
+*~
+*.swp

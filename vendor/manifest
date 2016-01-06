@@ -36,6 +36,12 @@
 			"branch": "master"
 		},
 		{
+			"importpath": "github.com/BurntSushi/toml",
+			"repository": "https://github.com/BurntSushi/toml",
+			"revision": "f706d00e3de6abe700c994cdd545a1a4915af060",
+			"branch": "HEAD"
+		},
+		{
 			"importpath": "github.com/docopt/docopt-go",
 			"repository": "https://github.com/docopt/docopt-go",
 			"revision": "854c423c810880e30b9fecdabb12d54f4a92f9bb",
