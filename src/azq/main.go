@@ -2,8 +2,10 @@ package main
 
 import (
 	"engineroom"
+	"errors"
 	"fmt"
 	"github.com/docopt/docopt-go"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -15,7 +17,7 @@ Usage:
 	azq scan [ -F configFile ] [ -e environment ] ( -a | <queuePrefix> )
 	azq tp [ -F configFile ] [ -e environment ] <queueName>
 	azq profile [ -F configFile ] [ -e environment ] <queueName> [<duration>]
-	azq put [ -F configFile ] [ -e environment ] <queueName> <message>
+	azq put [ -F configFile ] [ -e environment ] <queueName> (- | <message>)
 	azq peek [ -F configFile ] [ -e environment ] <queueName>
 	azq pop [ -F configFile ] [ -e environment ] <queueName>
 Arguments:
@@ -85,8 +87,21 @@ func doIt(dict map[string]interface{}) {
 	}
 
 	if dict["put"].(bool) {
+		var message string
+		msgParam, paramOk := dict["<message>"].(string)
+		_, stdinOk := dict["-"].(bool)
+		if paramOk {
+			message = msgParam
+		} else if stdinOk {
+			var err error
+			message, err = readStdin()
+			if err != nil {
+				fmt.Printf("Error reading from Stdin: %s\n", err)
+				return
+			}
+		}
+
 		queueName := dict["<queueName>"].(string)
-		message := dict["<message>"].(string)
 		engineroom.Put(queueName, message)
 	}
 
@@ -109,4 +124,28 @@ func parse(usage, version string) map[string]interface{} {
 		os.Exit(1)
 	}
 	return dict
+}
+
+func readStdin() (string, error) {
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		return "", errors.New("Nothing on Stdin")
+	}
+
+	bytes, err := ioutil.ReadAll(os.Stdin)
+
+	if err != nil {
+		return "", err
+	}
+
+	// Strip trailing newline
+	if bytes[len(bytes)-1] == '\n' {
+		if bytes[len(bytes)-2] == '\r' {
+			return string(bytes[:len(bytes)-2]), nil
+		}
+		return string(bytes[:len(bytes)-1]), nil
+	}
+
+	return string(bytes[:]), nil
+
 }
