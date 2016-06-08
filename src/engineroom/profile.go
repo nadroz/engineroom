@@ -32,7 +32,7 @@ func Profile(queueName string, duration time.Duration, bufferSize int) {
 				fmt.Printf("\ntime up after %v\n", duration)
 				return
 			case <-pollTicker:
-				// fmt.Fprintf(os.Stderr, "Polling queues%s%s\r", strings.Repeat(".", ellipseCount), strings.Repeat(" ", 4-ellipseCount))
+				fmt.Fprintf(os.Stderr, "Polling queues%s%s\r", strings.Repeat(".", ellipseCount), strings.Repeat(" ", 4-ellipseCount))
 				nameChan <- queueName
 				ellipseCount++
 				ellipseCount %= 4
