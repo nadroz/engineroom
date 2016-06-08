@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-type Queue struct {
-	Name              string
-	Depth             int
-	AverageThroughput time.Duration
+type QueueStatus struct {
+	Name    string
+	Depth   int
+	Latency time.Duration
 }
 
-func ReportDepth(queues []Queue) {
+func ReportDepth(queues []QueueStatus) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Queue", "Depth"})
 	for i := range queues {
@@ -24,9 +24,9 @@ func ReportDepth(queues []Queue) {
 	table.Render()
 }
 
-func ReportMovingAverage(queueChan chan Queue) {
-	fmt.Println("Queue\tAverage Wait Time\tQueue Depth")
+func ReportMovingAverage(queueChan chan QueueStatus) {
+	fmt.Printf("Queue\tLatency (s)\tDepth\tTimestamp\n")
 	for queue := range queueChan {
-		fmt.Printf("\r%s\t%s\t%d\r\n", queue.Name, queue.AverageThroughput, queue.Depth)
+		fmt.Printf("%s\t%f\t%d\t%s\n", queue.Name, queue.Latency.Seconds(), queue.Depth, time.Now().Format("03:04:05.000000"))
 	}
 }

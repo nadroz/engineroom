@@ -17,7 +17,7 @@ func Profile(queueName string, duration time.Duration, bufferSize int) {
 	pollTimer := time.NewTimer(duration).C
 	pollTicker := time.NewTicker(time.Duration(100) * time.Millisecond).C
 	nameChan := make(chan string)
-	resChan := make(chan coordinator.Queue)
+	resChan := make(chan coordinator.QueueStatus)
 	defer close(resChan)
 	messageChan := peekMessages(nameChan)
 	go coordinator.ReportMovingAverage(resChan)
@@ -56,7 +56,7 @@ func Profile(queueName string, duration time.Duration, bufferSize int) {
 		if len(durations) >= bufferSize {
 			avg := averageDuration(durations)
 			current := Fetch([]string{queueName}, true)
-			resChan <- coordinator.Queue{queueName, current[0].Depth, avg}
+			resChan <- coordinator.QueueStatus{queueName, current[0].Depth, avg}
 			durations = durations[1:]
 		}
 	}
