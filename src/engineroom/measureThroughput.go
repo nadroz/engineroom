@@ -9,9 +9,9 @@ import (
 func MeasureThroughput(queueName string) time.Duration {
 	nameChan := make(chan string)
 	c := peekMessages(nameChan)
-
 	nameChan <- queueName
-	close(nameChan)
+	defer close(nameChan)
+
 	message := <-c
 	now := time.Now().UTC()
 	ins, err := time.Parse(time.RFC1123, message.InsertionTime)

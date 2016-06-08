@@ -2,6 +2,9 @@ package engineroom
 
 import (
 	"coordinator"
+	"fmt"
+	// "os"
+	// "strings"
 	"time"
 )
 
@@ -9,52 +12,52 @@ import (
 // then send a calcualted average down a channel to the coordinator/reader
 //wait 2 sec to peek again
 //only recalculate when a dequeue/enqueue occurs
-func Profile(queueName string, seconds int) {
+func Profile(queueName string, duration time.Duration, bufferSize int) {
 	//loop for a time duration... peek the queue
-	stopWatch := time.NewTimer(time.Duration(seconds) * time.Second).C
+	pollTimer := time.NewTimer(duration).C
+	pollTicker := time.NewTicker(time.Duration(100) * time.Millisecond).C
 	nameChan := make(chan string)
 	resChan := make(chan coordinator.Queue)
+	defer close(resChan)
 	messageChan := peekMessages(nameChan)
 	go coordinator.ReportMovingAverage(resChan)
 
 	//do timer
 	go func() {
+		ellipseCount := 0
 		for {
 			select {
-			case <-stopWatch:
+			case <-pollTimer:
 				close(nameChan)
+				fmt.Printf("\ntime up after %v\n", duration)
 				return
-			default:
+			case <-pollTicker:
+				// fmt.Fprintf(os.Stderr, "Polling queues%s%s\r", strings.Repeat(".", ellipseCount), strings.Repeat(" ", 4-ellipseCount))
 				nameChan <- queueName
+				ellipseCount++
+				ellipseCount %= 4
 			}
 		}
 	}()
-	var coll []MessageDuration
-	var dur time.Duration
-	for message := range messageChan {
-		size := len(coll)
-		now := time.Now().UTC()
-		switch {
-		case size == 0:
-			ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
-			ins = ins.UTC()
-			dur = now.Sub(ins)
-			coll = append(coll, MessageDuration{message.MessageID, dur})
-		case size < 10:
-			if coll[len(coll)-1].MessageId != message.MessageID {
-				ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
-				ins = ins.UTC()
-				dur = now.Sub(ins)
-				coll = append(coll, MessageDuration{message.MessageID, dur})
-			}
 
-		case size == 10:
-			avg := doAverage(coll)
-			queueColl := []string{queueName}
-			currentQ := Count(queueColl, true)
-			resChan <- coordinator.Queue{queueName, currentQ[0].Depth, avg}
-			coll = coll[1:]
+	var durations []MessageDuration
+	lastId := ""
+	for message := range messageChan {
+		if lastId == message.MessageID {
+			continue
+		}
+		lastId = message.MessageID
+
+		now := time.Now().UTC()
+		ins, _ := time.Parse(time.RFC1123, message.InsertionTime)
+		current := MessageDuration{message.MessageID, now.Sub(ins.UTC())}
+
+		durations = append(durations, current)
+		if len(durations) >= bufferSize {
+			avg := averageDuration(durations)
+			current := Fetch([]string{queueName}, true)
+			resChan <- coordinator.Queue{queueName, current[0].Depth, avg}
+			durations = durations[1:]
 		}
 	}
-	close(resChan)
 }

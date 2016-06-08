@@ -27,7 +27,6 @@ func ReportDepth(queues []Queue) {
 func ReportMovingAverage(queueChan chan Queue) {
 	fmt.Println("Queue\tAverage Wait Time\tQueue Depth")
 	for queue := range queueChan {
-		//fmt.Printf("\x0c%s\t%s\t\t%d\n\r", queue.Name, queue.AverageThroughput, 2)
-		fmt.Printf("\r%s\t%s\t%d\r", queue.Name, queue.AverageThroughput, queue.Depth)
+		fmt.Printf("\r%s\t%s\t%d\r\n", queue.Name, queue.AverageThroughput, queue.Depth)
 	}
 }

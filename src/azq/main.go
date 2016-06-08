@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 )
 
 const (
@@ -16,7 +17,7 @@ Usage:
 	azq count [ -F configFile ] [ -e environment ] <queueName>
 	azq scan [ -F configFile ] [ -e environment ] ( -a | <queuePrefix> )
 	azq tp [ -F configFile ] [ -e environment ] <queueName>
-	azq profile [ -F configFile ] [ -e environment ] <queueName> [<duration>]
+	azq profile [ -F configFile ] [ -e environment ] <queueName> [<duration>] [<buffer>]
 	azq put [ -F configFile ] [ -e environment ] <queueName> (- | <message>)
 	azq peek [ -F configFile ] [ -e environment ] <queueName>
 	azq pop [ -F configFile ] [ -e environment ] <queueName>
@@ -37,7 +38,7 @@ The most commonly used commands are:
 	tp           How long for one message to traverse the queue
 	profile      Moving average of queue depth and throughput over time
 `
-	version string = "EngineRoom 0.2"
+	version string = "EngineRoom 0.3.1"
 )
 
 func main() {
@@ -64,7 +65,7 @@ func doIt(dict map[string]interface{}) {
 		}
 		var queueNames []string
 		queueNames = append(queueNames, queueName)
-		engineroom.Count(queueNames, false)
+		engineroom.Fetch(queueNames, false)
 	}
 
 	if dict["scan"].(bool) {
@@ -82,8 +83,26 @@ func doIt(dict map[string]interface{}) {
 
 	if dict["profile"].(bool) {
 		queueName := dict["<queueName>"].(string)
-		dur, _ := strconv.ParseInt(dict["<duration>"].(string), 10, 64)
-		engineroom.Profile(queueName, int(dur))
+		durationArg, ok := dict["<duration>"].(string)
+		if !ok {
+			durationArg = "5s"
+		}
+
+		bufferArg, ok := dict["<buffer>"].(string)
+		if !ok {
+			bufferArg = "10"
+		}
+
+		dur, err := time.ParseDuration(durationArg)
+		if err != nil {
+			fmt.Printf("Error parsing duration (expected duration e.g. 5m): %s\n", durationArg)
+		}
+		buf, err := strconv.Atoi(bufferArg)
+		if err != nil {
+			fmt.Printf("Error parsing buffer (expected int): %s\n", bufferArg)
+		}
+
+		engineroom.Profile(queueName, dur, buf)
 	}
 
 	if dict["put"].(bool) {

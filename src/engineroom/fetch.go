@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func Count(queueNames []string, silent bool) []coordinator.Queue {
+func Fetch(queueNames []string, silent bool) []coordinator.Queue {
 	client := getStorageClient()
 
 	var queues []coordinator.Queue

@@ -22,5 +22,5 @@ func Scan(queuePrefix string) {
 	for i := range queueList.Queues {
 		queueNames = append(queueNames, queueList.Queues[i])
 	}
-	Count(queueNames, false)
+	Fetch(queueNames, false)
 }
