@@ -50,7 +50,7 @@
 		{
 			"importpath": "github.com/nadroz/azure-sdk-for-go",
 			"repository": "https://github.com/nadroz/azure-sdk-for-go",
-			"revision": "6c97130d7c08c54c5c7534364030f085726babef",
+			"revision": "eb72e0f5e84772764c762c1e1bda712169d07794",
 			"branch": "HEAD"
 		},
 		{

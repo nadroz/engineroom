@@ -2,7 +2,6 @@ package engineroom
 
 import (
 	"config"
-	"fmt"
 	"github.com/nadroz/azure-sdk-for-go/storage"
 	"os"
 	"time"
@@ -31,7 +30,7 @@ func getStorageClient() storage.QueueServiceClient {
 	return client
 }
 
-func doAverage(durations []MessageDuration) time.Duration {
+func averageDuration(durations []MessageDuration) time.Duration {
 	var dur time.Duration = 0
 	for i := range durations {
 		dur += durations[i].ThroughputDuration
@@ -47,8 +46,6 @@ func getDuration(start string) time.Duration {
 	}
 	ins = ins.UTC()
 	dif := now.Sub(ins)
-	fmt.Println("get duration:")
-	fmt.Println(dif)
 	return dif
 }
 
@@ -60,6 +57,7 @@ func peekMessages(queueNames chan string) <-chan storage.PeekMessageResponse {
 			messages, err := client.PeekMessages(name, storage.PeekMessagesParameters{1})
 			if err != nil {
 				out <- storage.PeekMessageResponse{}
+				continue
 			}
 
 			for i := range messages.QueueMessagesList {
