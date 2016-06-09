@@ -6,11 +6,11 @@ import (
 	"github.com/nadroz/azure-sdk-for-go/storage"
 )
 
-func Pop(queueName string) {
+func Pop(queueName string, count int) {
 	client := getStorageClient()
 	params := storage.GetMessagesParameters{
-		NumOfMessages:     1,
-		VisibilityTimeout: 30,
+		NumOfMessages:     count,
+		VisibilityTimeout: 10,
 	}
 
 	messages, err := client.GetMessages(queueName, params)
@@ -19,24 +19,23 @@ func Pop(queueName string) {
 		return
 	}
 
-	if len(messages.QueueMessagesList) != 1 {
+	if len(messages.QueueMessagesList) != count {
 		return
 	}
 
-	msg := messages.QueueMessagesList[0]
+	for _, msg := range messages.QueueMessagesList {
+		err = client.DeleteMessage(queueName, msg.MessageID, msg.PopReceipt)
+		if err != nil {
+			fmt.Printf("Failed to pop message: %s\n", err)
+			return
+		}
 
-	err = client.DeleteMessage(queueName, msg.MessageID, msg.PopReceipt)
+		txt, err := base64.StdEncoding.DecodeString(msg.MessageText)
+		if err != nil {
+			fmt.Printf("Failed to decode message: %s\n", err)
+			return
+		}
 
-	if err != nil {
-		fmt.Printf("Failed to pop message: %s\n", err)
+		fmt.Printf("%s\n", txt)
 	}
-
-	txt, err := base64.StdEncoding.DecodeString(msg.MessageText)
-
-	if err != nil {
-		fmt.Printf("Failed to decode message: %s\n", err)
-		return
-	}
-
-	fmt.Printf("%s\n", txt)
 }

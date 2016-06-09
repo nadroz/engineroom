@@ -20,7 +20,7 @@ Usage:
 	azq profile [ -F configFile ] [ -e environment ] <queueName> [<duration>] [<buffer>]
 	azq put [ -F configFile ] [ -e environment ] <queueName> (- | <message>)
 	azq peek [ -F configFile ] [ -e environment ] <queueName>
-	azq pop [ -F configFile ] [ -e environment ] <queueName>
+	azq pop [ -F configFile ] [ -e environment ] [-n number] <queueName> 
 Arguments:
 	queueName    The name(s) of one or more queues
 	queuePrefix  A prefix for filtering which queues to show
@@ -30,6 +30,7 @@ Options:
 	-a           All queues
 	-e=env       Azure Storage Services account [default: default]
  	-F=file      Alternate configuration file [default: /usr/local/etc/azq/config]
+	-n=number    The number of messages to pop
 	-h, --help   Show this screen.
 	--version    Show version.
 The most commonly used commands are:
@@ -38,7 +39,7 @@ The most commonly used commands are:
 	tp           How long for one message to traverse the queue
 	profile      Moving average of queue depth and throughput over time
 `
-	version string = "EngineRoom 0.3.1"
+	version string = "EngineRoom 0.3.2"
 )
 
 func main() {
@@ -126,7 +127,21 @@ func doIt(dict map[string]interface{}) {
 
 	if dict["pop"].(bool) {
 		queueName := dict["<queueName>"].(string)
-		engineroom.Pop(queueName)
+		n, ok := dict["-n"].(string)
+		if !ok {
+			n = "1"
+		}
+
+		number, err := strconv.Atoi(n)
+		if err != nil {
+			fmt.Printf("Illegal argument to -n (expected int): %s\n", n)
+			return
+		}
+		if number > 32 || number < 1 {
+			fmt.Printf("Error: cannot pop less than 1 or more than 32 messages\n")
+			return
+		}
+		engineroom.Pop(queueName, number)
 	}
 
 	if dict["peek"].(bool) {
